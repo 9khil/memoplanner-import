@@ -1,14 +1,75 @@
+
 {
-  "mat": {
-    "uri": "https://myabilia.com/api/v1/data/192996/storage/file/id/8497c3c5-adea-4673-8be0-4f9fcd3a8bf6"
-  },
-  "svømming": {
-    "uri": ""
-  },
-  "matematikk": {
-    "uri": ""
+  "oppstart": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/02873ece-26dd-4d5d-a35c-901e4193fb82"
   },
   "norsk": {
-    "uri": ""
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/dc0f4b65-c7d7-4b2f-aba0-900bd448b5d2"
+  },
+  "matematikk": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/8fe73b8e-1c2f-49ca-b139-35a1debecd8a"
+  },
+  "gym": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/829fecb3-39fd-4a79-8717-438b62370686"
+  },
+  "kroppsøving": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/829fecb3-39fd-4a79-8717-438b62370686"
+  },
+  "svømming": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/d06b1dc2-d0ee-4704-9dc8-e96ae44294e6"
+  },
+  "samfunnsfag": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/d8a87826-6dd2-4ebf-a0b5-bad1ae83a23b"
+  },
+  "krle": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/2461767d-8cb4-47c2-bef5-6bbf94759496"
+  },
+  "musikk": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/26621212-a6b6-4f7b-8e5d-1b33f862ff5b"
+  },
+  "kor": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/0144af0b-e129-4416-9d23-e1a4ef853819"
+  },
+  "skolekor": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/0144af0b-e129-4416-9d23-e1a4ef853819"
+  },
+  "synge": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/0144af0b-e129-4416-9d23-e1a4ef853819"
+  },
+  "engelsk": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/13ab5d6f-09c1-4af8-b9a2-c94b9e377a40"
+  },
+  "tur": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/eb20fff2-7d94-465b-ab71-47a383b6c0b5"
+  },
+  "vitensenter": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/eb20fff2-7d94-465b-ab71-47a383b6c0b5"
+  },
+  "ekskursjon": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/eb20fff2-7d94-465b-ab71-47a383b6c0b5"
+  },
+  "besøke": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/eb20fff2-7d94-465b-ab71-47a383b6c0b5"
+  },
+  "kunst og håndverk": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/ab1f9e70-a8df-408a-964b-b88742fc81cc"
+  },
+  "håndarbeid": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/ab1f9e70-a8df-408a-964b-b88742fc81cc"
+  },
+  "sløyd": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/ab1f9e70-a8df-408a-964b-b88742fc81cc"
+  },
+  "mat og helse": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/83f77ea7-61c6-4c11-8b07-54feb4dd5308"
+  },
+  "heimkunnskap": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/83f77ea7-61c6-4c11-8b07-54feb4dd5308"
+  },
+  "matlaging": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/83f77ea7-61c6-4c11-8b07-54feb4dd5308"
+  },
+  "mat": {
+    "uri": "https://www.myabilia.com/api/v1/data/192996/storage/file/id/8497c3c5-adea-4673-8be0-4f9fcd3a8bf6"
   }
 }

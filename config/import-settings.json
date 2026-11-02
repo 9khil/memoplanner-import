@@ -1,0 +1,11 @@
+{
+  "student": {
+    "name": "Leander",
+    "filterIndividualActivities": true
+  },
+  "import": {
+    "includeBreaks": false,
+    "includeMeals": true,
+    "includeDescriptions": true
+  }
+}
