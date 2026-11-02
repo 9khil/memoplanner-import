@@ -51,16 +51,21 @@ $('preview').addEventListener('click', async () => {
     const value = JSON.parse(jsonInput.value);
     const result = await request('import', value);
     const list = $('items'); list.replaceChildren();
-    for (const a of result.activities) {
+    for (const item of result.classification) {
+      const a = item.activity;
       const el = document.createElement('div'); el.className = 'item';
       const name = document.createElement('strong'); name.textContent = a.title;
       const date = document.createElement('small'); date.textContent = `${a.date} · ${a.start}–${a.end}${a.description ? ' · ' + a.description : ''}`;
-      el.append(name, date); list.append(el);
+      const status = document.createElement('small');
+      status.textContent = item.status === 'new' ? 'NY' : item.status === 'existing' ? 'FINNES ALLEREDE' : 'MULIG KONFLIKT';
+      status.className = 'status ' + item.status;
+      if (item.reason) status.title = item.reason;
+      el.append(name, date, status); list.append(el);
     }
+    showMessage(`${result.counts.new} nye · ${result.counts.existing} finnes allerede · ${result.counts.conflict} mulige konflikter`);
     previewed = jsonInput.value;
     confirm.checked = false; importButton.disabled = true;
     $('previewPanel').classList.remove('hidden');
-    message.classList.add('hidden');
   } catch (error) { resetPreview(); showMessage('Kunne ikke validere: ' + (error as Error).message, true); }
 });
 confirm.addEventListener('change', () => { importButton.disabled = !confirm.checked || !previewed; });
@@ -69,8 +74,8 @@ $('import').addEventListener('click', async () => {
   importButton.disabled = true;
   try {
     const result = await request('import', { ...JSON.parse(previewed), confirm: true });
-    const lines = result.results.map((r: any) => `${r.status === 'created' ? '✓' : '!'} ${r.date}: ${r.title} – ${r.status}${r.detail ? ' (' + r.detail + ')' : ''}`);
-    showMessage(`Forsøkt ${result.attempted} av ${result.total} aktiviteter.\n${lines.join('\n')}\n\n${result.warning}`, result.results.some((r: any) => r.status !== 'created'));
+    const lines = result.results.map((r: any) => `${r.status === 'created' ? '✓' : r.status === 'skipped' ? '–' : '!'} ${r.date}: ${r.title} – ${r.status}${r.detail ? ' (' + r.detail + ')' : ''}`);
+    showMessage(`Forsøkt ${result.attempted} av ${result.total} aktiviteter.\n${lines.join('\n')}\n\n${result.warning}`, result.results.some((r: any) => ['error', 'unknown', 'conflict'].includes(r.status)));
     confirm.checked = false;
   } catch (error) { showMessage((error as Error).message, true); }
 });
