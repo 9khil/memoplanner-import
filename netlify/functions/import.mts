@@ -126,3 +126,52 @@ function imageFor(title: string) {
   return { uri, fmtType: 'image/*', value: 'URI', altRep: null };
 }
 function alignmentFor(a: Activity, all: Activity[]) {
+  const ordered = [...all].sort((x, y) => x.date.localeCompare(y.date) || x.start.localeCompare(y.start) || x.end.localeCompare(y.end) || normTitle(x.title).localeCompare(normTitle(y.title)));
+  return ordered.indexOf(a) % 2 === 0 ? 'LEFT' : 'RIGHT';
+}
+function payload(a: Activity, all: Activity[], entity: number, uid: string) {
+  return { alarms: [], alignment: alignmentFor(a, all), image: imageFor(a.title), attachments: [], attendees: [], categories: [], classType: 'PUBLIC',
+    deleted: false, description: a.description || '',
+    dtEnd: { date: a.date, time: `${a.end}:00`, timeZone: 'Europe/Oslo' }, dtStamp: new Date().toISOString(),
+    dtStart: { date: a.date, time: `${a.start}:00`, timeZone: 'Europe/Oslo' }, exDate: [], owner: entity,
+    removeAfter: false, revision: 0, secretExemptions: [], seriesId: uid, showInDayPlan: true,
+    summary: a.title, textToSpeech: false, uid };
+}
+export default async (req: Request) => {
+  if (req.method !== 'POST') return json({ error: 'Kun POST er støttet.' }, 405);
+  const unauthorized = requireAuth(req); if (unauthorized) return unauthorized;
+  if (!sameOrigin(req)) return json({ error: 'Ugyldig origin.' }, 403);
+  if (Number(req.headers.get('content-length') || 0) > 100_000) return json({ error: 'JSON er for stor.' }, 413);
+  let body: any;
+  try { body = await req.json(); } catch { return json({ error: 'Ugyldig JSON.' }, 400); }
+  let activities: Activity[];
+  try { activities = parse(body); } catch (err) { return json({ error: (err as Error).message }, 400); }
+  let cfg: ReturnType<typeof config>, classification: Classification[];
+  try { for (const a of activities) imageFor(a.title); } catch (err) { return json({ error: (err as Error).message }, 400); }
+  try { cfg = config(); classification = classify(activities, await fetchExisting(activities, cfg)); }
+  catch (err) { return json({ error: (err as Error).message }, 502); }
+  const counts = { new: classification.filter(x => x.status === 'new').length,
+    existing: classification.filter(x => x.status === 'existing').length,
+    conflict: classification.filter(x => x.status === 'conflict').length };
+  if (body.confirm !== true) return json({ dryRun: true, classification, counts });
+  const results: Array<{ title: string; date: string; status: string; detail?: string }> = [];
+  for (const item of classification) {
+    const a = item.activity;
+    if (item.status !== 'new') {
+      results.push({ title: a.title, date: a.date, status: item.status === 'existing' ? 'skipped' : 'conflict', detail: item.reason });
+      continue;
+    }
+    const uid = randomUUID();
+    try {
+      const response = await fetch(`${cfg.base}/${uid}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Cookie: cfg.cookie },
+        body: JSON.stringify(payload(a, activities, cfg.entity, uid)), signal: AbortSignal.timeout(12000)
+      });
+      if (!response.ok) { results.push({ title: a.title, date: a.date, status: 'error', detail: `HTTP ${response.status}` }); break; }
+      results.push({ title: a.title, date: a.date, status: 'created' });
+    } catch {
+      results.push({ title: a.title, date: a.date, status: 'unknown', detail: 'Timeout eller nettverksfeil. Sjekk kalenderen før ny import.' }); break;
+    }
+  }
+  return json({ results, attempted: results.length, total: activities.length, counts, warning: 'Eksisterende aktiviteter og mulige konflikter ble hoppet over. Kalenderen ble kontrollert på nytt før import.' });
+};
