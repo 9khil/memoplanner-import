@@ -3,7 +3,7 @@ import { json, requireAuth, sameOrigin } from '../shared/auth.mts';
 import imageMappings from '../../config/image-mapping.json';
 
 type Activity = { date: string; start: string; end: string; title: string; description?: string };
-type Existing = { uid?: string; deleted?: boolean; dtStart?: { date?: string; time?: string }; dtEnd?: { date?: string; time?: string }; summary?: string; rrule?: { freq?: string; interval?: number | null; byDay?: string[]; until?: string | null; count?: number | null }; exDate?: unknown[] };
+type Existing = { uid?: string; deleted?: boolean; dtStart?: { date?: string; time?: string }; dtEnd?: { date?: string; time?: string }; summary?: string; alignment?: 'LEFT' | 'RIGHT' | string; rrule?: { freq?: string; interval?: number | null; byDay?: string[]; until?: string | null; count?: number | null }; exDate?: unknown[] };
 type Classification = { activity: Activity; status: 'new' | 'existing' | 'conflict'; reason?: string };
 const normTime = (s: string | undefined) => (s || '').slice(0, 5);
 const normTitle = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('nb-NO');
@@ -125,12 +125,36 @@ function imageFor(title: string) {
     throw Error(`Ugyldig myAbilia-bilde-URI for ${title}`);
   return { uri, fmtType: 'image/*', value: 'URI', altRep: null };
 }
-function alignmentFor(a: Activity, all: Activity[]) {
-  const ordered = [...all].sort((x, y) => x.date.localeCompare(y.date) || x.start.localeCompare(y.start) || x.end.localeCompare(y.end) || normTitle(x.title).localeCompare(normTitle(y.title)));
-  return ordered.indexOf(a) % 2 === 0 ? 'LEFT' : 'RIGHT';
+type Alignment = 'LEFT' | 'RIGHT';
+type Placed = { date: string; start: string; end: string; title: string; alignment: Alignment };
+const orderPlaced = (a: Placed, b: Placed) =>
+  a.date.localeCompare(b.date) || a.start.localeCompare(b.start) || a.end.localeCompare(b.end) || normTitle(a.title).localeCompare(normTitle(b.title));
+function previousAlignment(a: Activity, existing: Existing[], created: Placed[]): Alignment {
+  // Recurring events count on each occurrence date, not only their original start date.
+  const dates = new Set<string>([a.date]);
+  for (let offset = 1; offset <= 2; offset++) {
+    const d = day(a.date); d.setUTCDate(d.getUTCDate() - offset); dates.add(iso(d));
+  }
+  for (const e of existing) if (e.dtStart?.date && e.dtStart.date <= a.date) {
+    if (!e.rrule) dates.add(e.dtStart.date);
+  }
+  const prior: Placed[] = [...created];
+  for (const e of existing) {
+    if (e.deleted || (e.alignment !== 'LEFT' && e.alignment !== 'RIGHT')) continue;
+    const start = normTime(e.dtStart?.time), end = normTime(e.dtEnd?.time);
+    if (!validTime(start) || !validTime(end)) continue;
+    for (const date of dates) {
+      if (date > a.date || !occursOn(e, date) || exceptionOn(e, date)) continue;
+      prior.push({ date, start, end, title: e.summary || '', alignment: e.alignment });
+    }
+  }
+  const earlier = prior.filter(p => p.date < a.date || (p.date === a.date && p.start < a.start));
+  earlier.sort(orderPlaced);
+  const last = earlier.at(-1);
+  return last?.alignment === 'LEFT' ? 'RIGHT' : 'LEFT';
 }
-function payload(a: Activity, all: Activity[], entity: number, uid: string) {
-  return { alarms: [], alignment: alignmentFor(a, all), image: imageFor(a.title), attachments: [], attendees: [], categories: [], classType: 'PUBLIC',
+function payload(a: Activity, alignment: Alignment, entity: number, uid: string) {
+  return { alarms: [], alignment, image: imageFor(a.title), attachments: [], attendees: [], categories: [], classType: 'PUBLIC',
     deleted: false, description: a.description || '',
     dtEnd: { date: a.date, time: `${a.end}:00`, timeZone: 'Europe/Oslo' }, dtStamp: new Date().toISOString(),
     dtStart: { date: a.date, time: `${a.start}:00`, timeZone: 'Europe/Oslo' }, exDate: [], owner: entity,
@@ -146,28 +170,35 @@ export default async (req: Request) => {
   try { body = await req.json(); } catch { return json({ error: 'Ugyldig JSON.' }, 400); }
   let activities: Activity[];
   try { activities = parse(body); } catch (err) { return json({ error: (err as Error).message }, 400); }
-  let cfg: ReturnType<typeof config>, classification: Classification[];
+  let cfg: ReturnType<typeof config>, classification: Classification[], existing: Existing[];
   try { for (const a of activities) imageFor(a.title); } catch (err) { return json({ error: (err as Error).message }, 400); }
-  try { cfg = config(); classification = classify(activities, await fetchExisting(activities, cfg)); }
+  try { cfg = config(); existing = await fetchExisting(activities, cfg); classification = classify(activities, existing); }
   catch (err) { return json({ error: (err as Error).message }, 502); }
   const counts = { new: classification.filter(x => x.status === 'new').length,
     existing: classification.filter(x => x.status === 'existing').length,
     conflict: classification.filter(x => x.status === 'conflict').length };
   if (body.confirm !== true) return json({ dryRun: true, classification, counts });
   const results: Array<{ title: string; date: string; status: string; detail?: string }> = [];
-  for (const item of classification) {
+  const created: Placed[] = [];
+  // Import chronologically so earlier successfully created activities determine the next side.
+  const ordered = [...classification].sort((x, y) =>
+    x.activity.date.localeCompare(y.activity.date) || x.activity.start.localeCompare(y.activity.start) ||
+    x.activity.end.localeCompare(y.activity.end) || normTitle(x.activity.title).localeCompare(normTitle(y.activity.title)));
+  for (const item of ordered) {
     const a = item.activity;
     if (item.status !== 'new') {
       results.push({ title: a.title, date: a.date, status: item.status === 'existing' ? 'skipped' : 'conflict', detail: item.reason });
       continue;
     }
     const uid = randomUUID();
+    const alignment = previousAlignment(a, existing, created);
     try {
       const response = await fetch(`${cfg.base}/${uid}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Cookie: cfg.cookie },
-        body: JSON.stringify(payload(a, activities, cfg.entity, uid)), signal: AbortSignal.timeout(12000)
+        body: JSON.stringify(payload(a, alignment, cfg.entity, uid)), signal: AbortSignal.timeout(12000)
       });
       if (!response.ok) { results.push({ title: a.title, date: a.date, status: 'error', detail: `HTTP ${response.status}` }); break; }
+      created.push({ date: a.date, start: a.start, end: a.end, title: a.title, alignment });
       results.push({ title: a.title, date: a.date, status: 'created' });
     } catch {
       results.push({ title: a.title, date: a.date, status: 'unknown', detail: 'Timeout eller nettverksfeil. Sjekk kalenderen før ny import.' }); break;
