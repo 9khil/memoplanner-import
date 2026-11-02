@@ -1,0 +1,1 @@
+{"name":"memoplanner-import","version":"1.0.0","private":true,"type":"module","scripts":{"build":"esbuild src/app.ts --bundle --format=esm --target=es2020 --outfile=dist/app.js && cp src/index.html src/style.css dist/","dev":"netlify dev","typecheck":"tsc --noEmit"},"devDependencies":{"esbuild":"^0.25.0","typescript":"^5.8.0","@types/node":"^22.0.0","netlify-cli":"^23.0.0"}}
