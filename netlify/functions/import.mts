@@ -116,8 +116,13 @@ function classify(activities: Activity[], existing: Existing[]): Classification[
 }
 // Map activity titles to image URIs already stored by myAbilia. Never send a Netlify image URL to the API.
 function imageFor(title: string) {
-  const mapping = (imageMappings as Record<string, { uri?: string }>)[normTitle(title)];
-  const uri = mapping?.uri?.trim();
+  const mappings = imageMappings as Record<string, { uri?: string }>;
+  const normalized = normTitle(title);
+  // Exact titles take precedence (e.g. "mat og helse" must not match "mat").
+  // For compound titles, the first named activity determines the image.
+  const candidates = [normalized, ...normalized.split(/\s*\+\s*|\s*\/\s*/).map(normTitle)];
+  const key = candidates.find(candidate => mappings[candidate]?.uri?.trim());
+  const uri = key ? mappings[key].uri?.trim() : undefined;
   if (!uri) return null;
   const url = new URL(uri);
   if (url.protocol !== 'https:' || !['myabilia.com', 'www.myabilia.com'].includes(url.hostname) ||
